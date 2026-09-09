@@ -1,111 +1,200 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* Tailwind v4: class-based dark mode has to be opted into explicitly.
+   This makes "dark:" utilities respond to a .dark class on <html>
+   instead of the OS prefers-color-scheme media query. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Tailwind v4: this @theme block is what generates the utility classes
+   (bg-surface-0, text-ink, border-route, rounded-node, font-mono, ...).
+   It replaces tailwind.config.js's theme.extend — you can delete that
+   file, or keep it empty if you still need custom "content" globs. */
+@theme {
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-ink: var(--text-primary);
+  --color-ink-muted: var(--text-secondary);
+  --color-ink-faint: var(--text-muted);
+
+  --color-route: var(--accent);
+  --color-route-hover: var(--accent-hover);
+  --color-route-soft: var(--accent-soft);
+  --color-route-border: var(--accent-border);
+
+  --radius-node: 10px;
+  --radius-panel: 14px;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* ============================================================
+   IT/CS Hiring Map — raw theme values
+   Orange is the single accent: dots, handles, active/selected
+   edges, borders on interactive elements, and buttons.
+   Everything else stays neutral so the graph does the talking.
+   ============================================================ */
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+:root {
+  /* neutral surfaces */
+  --surface-0: #FAFAF9;
+  --surface-1: #FFFFFF;
+  --surface-2: #F1F1EF;
+  --surface-3: #E9E9E6;
+
+  --border: #E3E3E0;
+  --border-strong: #CFCFCB;
+
+  --text-primary: #1B1B18;
+  --text-secondary: #6C6C66;
+  --text-muted: #9B9B94;
+
+  /* accent — "route orange" */
+  --accent: #FF5A1F;
+  --accent-hover: #FF7440;
+  --accent-soft: rgba(255, 90, 31, 0.10);
+  --accent-border: rgba(255, 90, 31, 0.35);
+
+  /* ---- React Flow (@xyflow/react v12) token overrides ---- */
+  --xy-background-color: var(--surface-0);
+  --xy-background-pattern-dot-color: rgba(255, 90, 31, 0.35);
+  --xy-background-pattern-line-color: rgba(255, 90, 31, 0.12);
+  --xy-background-pattern-cross-color: rgba(255, 90, 31, 0.25);
+
+  --xy-node-background-color: var(--surface-1);
+  --xy-node-border: 1px solid var(--border);
+  --xy-node-color: var(--text-primary);
+  --xy-node-boxshadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --xy-node-border-radius: 10px;
+  --xy-node-boxshadow-selected: 0 0 0 1px var(--accent);
+
+  --xy-edge-stroke-default: var(--border-strong);
+  --xy-edge-stroke-width-default: 1.5;
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-connectionline-stroke: var(--accent);
+  --xy-connectionline-stroke-width: 2;
+
+  --xy-handle-background-color: var(--accent);
+  --xy-handle-border-color: var(--surface-1);
+
+  --xy-selection-background-color: var(--accent-soft);
+  --xy-selection-border: 1px solid var(--accent);
+
+  --xy-minimap-background-color: var(--surface-1);
+  --xy-minimap-mask-background-color: rgba(0, 0, 0, 0.06);
+  --xy-minimap-node-background-color: var(--surface-3);
+
+  --xy-controls-button-background-color: var(--surface-1);
+  --xy-controls-button-background-color-hover: var(--surface-2);
+  --xy-controls-button-color: var(--text-secondary);
+  --xy-controls-button-color-hover: var(--accent);
+  --xy-controls-button-border-color: var(--border);
+}
+
+.dark {
+  --surface-0: #101113;
+  --surface-1: #16181B;
+  --surface-2: #1E2023;
+  --surface-3: #26282B;
+
+  --border: #2A2C30;
+  --border-strong: #3A3D42;
+
+  --text-primary: #EDEDE9;
+  --text-secondary: #A3A39B;
+  --text-muted: #6E6E68;
+
+  --accent: #FF6A2E;
+  --accent-hover: #FF8752;
+  --accent-soft: rgba(255, 106, 46, 0.14);
+  --accent-border: rgba(255, 106, 46, 0.40);
+
+  --xy-background-color: var(--surface-0);
+  --xy-background-pattern-dot-color: rgba(255, 106, 46, 0.30);
+  --xy-background-pattern-line-color: rgba(255, 106, 46, 0.10);
+  --xy-background-pattern-cross-color: rgba(255, 106, 46, 0.22);
+
+  --xy-node-background-color: var(--surface-1);
+  --xy-node-border: 1px solid var(--border);
+  --xy-node-color: var(--text-primary);
+  --xy-node-boxshadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --xy-node-boxshadow-selected: 0 0 0 1px var(--accent);
+
+  --xy-edge-stroke-default: var(--border-strong);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-connectionline-stroke: var(--accent);
+
+  --xy-handle-background-color: var(--accent);
+  --xy-handle-border-color: var(--surface-1);
+
+  --xy-selection-background-color: var(--accent-soft);
+  --xy-selection-border: 1px solid var(--accent);
+
+  --xy-minimap-background-color: var(--surface-1);
+  --xy-minimap-mask-background-color: rgba(0, 0, 0, 0.55);
+  --xy-minimap-node-background-color: var(--surface-3);
+
+  --xy-controls-button-background-color: var(--surface-1);
+  --xy-controls-button-background-color-hover: var(--surface-2);
+  --xy-controls-button-color: var(--text-secondary);
+  --xy-controls-button-color-hover: var(--accent);
+  --xy-controls-button-border-color: var(--border);
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
-  margin: 0;
+  background-color: var(--surface-0);
+  color: var(--text-primary);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+/* keyboard focus — always visible, always orange, never a browser default */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* thin, quiet scrollbars for panels/lists */
+.themed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.themed-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.themed-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: 999px;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+/* reusable panel surface (side info panel) */
+.panel {
+  background-color: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+.dark .panel {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* React Flow attribution — restyle instead of hiding (keep it MIT-compliant) */
+.react-flow__attribution {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  font-size: 10px !important;
 }
