@@ -4,114 +4,78 @@ import {
     Background,
     BackgroundVariant,
     Controls,
-    Handle,
     MiniMap,
-    Position,
     ReactFlow,
     addEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { MAP_ANIMATION, getMapTransition } from '../../config/animation';
+import { MapLegend } from '../panels/index';
+import { hiringMap } from '../../data/index';
+import { getHiringNodeType, hiringNodeTypes } from '../nodes/hiringNodeTypes';
+import { getLevelLegend } from '../nodes/nodeVisuals';
 import { ThemeToggle } from '../../provider/index';
 
-const LEVELS = {
-    start: { next: 'companyType', label: 'Company Type' },
-    companyType: { next: 'network', label: 'Network' },
-    network: { next: 'source', label: 'Source' },
-    source: { next: 'channel', label: 'Channel' },
-};
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 76;
-const TRANSITION_MS = 420; // keep in sync with the CSS below
+const INITIAL_EXPANDED_NODES = new Set(['start', 'government']);
 
 const rootNodes = [
-    { id: 'start', type: 'sample', data: { label: 'Start', type: 'START', level: 'start' } },
-    { id: 'goal', type: 'sample', data: { label: 'Goal', type: 'GOAL' } },
+    { id: 'start', type: 'startNode', data: { label: 'Start', type: 'START', level: 'start', companyType: 'shared' } },
+    { id: 'goal', type: 'endpointNode', data: { label: 'Hired', type: 'HIRED', companyType: 'shared' } },
 ];
 
-// ============================================================
-// NODE
-// entrance: on mount, flips `entered` true one frame later so the
-// CSS transition animates opacity/scale from 0 → 1 ("grows" in).
-// exit: controlled externally via data.exiting — set true, wait for
-// TRANSITION_MS, then actually remove the node from state.
-// ============================================================
-function SampleNode({ data }) {
-    const [entered, setEntered] = useState(false);
+const mapNodesById = new Map(hiringMap.nodes.map((node) => [node.id, node]));
+const mapChildrenById = hiringMap.edges.reduce((children, edge) => {
+    const current = children.get(edge.source) ?? [];
+    children.set(edge.source, [...current, edge.target]);
+    return children;
+}, new Map());
 
-    useEffect(() => {
-        const outer = requestAnimationFrame(() => {
-            const inner = requestAnimationFrame(() => setEntered(true));
-            return () => cancelAnimationFrame(inner);
-        });
-        return () => cancelAnimationFrame(outer);
-    }, []);
-
-    const visible = entered && !data.exiting;
-    const expandable = Boolean(data.level) && data.level !== 'channel';
-    const handleClass = '!h-2 !w-2 !border-none !bg-route';
-
-    return (
-        <div
-            className={`origin-top transition-all ease-out
-                ${visible ? 'scale-y-100 opacity-100' : 'scale-y-75 opacity-0 blur-sm'}
-        min-w-[180px] rounded-node border bg-surface-1 px-4 py-3 shadow-node
-        ${expandable ? 'cursor-pointer border-route-border hover:border-route' : 'border-border'}`}
-            style={{ transitionDuration: `${TRANSITION_MS}ms` }}
-        >
-            <Handle type="target" position={Position.Left} className={handleClass} />
-
-            <div
-                className={`transition-[filter] duration-500 ease-out
-                    ${visible ? 'blur-none' : 'blur-[3px]'}`}
-            >
-                <span className="mb-1 block font-mono text-[10px] tracking-wide text-route">{data.type}</span>
-                <div className="text-sm font-medium text-ink">{data.label}</div>
-                {expandable && <div className="mt-1 text-xs text-ink-muted">Click to expand or collapse</div>}
-            </div>
-
-            <Handle type="source" position={Position.Right} className={handleClass} />
-        </div>
-    );
-}
-
-const nodeTypes = { sample: SampleNode };
+const getMapNode = (id, parentId) => ({
+    id,
+    type: getHiringNodeType(mapNodesById.get(id).level),
+    data: {
+        ...mapNodesById.get(id),
+        type: getLevelLegend(mapNodesById.get(id).level).title.toUpperCase(),
+        parentId,
+    },
+});
 
 // ============================================================
-// GRAPH DATA HELPERS  (unchanged from your version)
+// GRAPH DATA HELPERS
 // ============================================================
 
 const getChildren = (node) => {
-    const level = LEVELS[node.data.level];
-    if (!level) return [];
-    return ['1', '2', '3'].map((number) => ({
-        id: `${level.next}-${node.id}-${number}`,
-        type: 'sample',
-        data: {
-            label: `${level.label} ${number}`,
-            type: level.next.toUpperCase(),
-            level: level.next,
-            parentId: node.id,
-        },
-    }));
+    if (node.id === 'start') {
+        return hiringMap.nodes
+            .filter((mapNode) => mapNode.level === 'companyType')
+            .map((mapNode) => getMapNode(mapNode.id, node.id));
+    }
+
+    return (mapChildrenById.get(node.id) ?? [])
+        .map((childId) => getMapNode(childId, node.id));
 };
 
+const MAP_LEVELS = ['companyType', 'hiringGoal', 'requirements', 'preparation', 'hiringChannel', 'hiringProcess'];
 const getPreviewPath = (node) => {
-    const previewLevels = ['companyType', 'network', 'source', 'channel'];
-    const previewLabels = {
-        companyType: 'Company Type',
-        network: 'Network',
-        source: 'Source',
-        channel: 'Channel',
-    };
-    const startIndex = previewLevels.indexOf(node.data.level);
-    const visibleLevels = previewLevels.slice(startIndex < 0 ? 0 : startIndex + 1);
+    const startIndex = MAP_LEVELS.indexOf(node.data.level);
+    const visibleLevels = MAP_LEVELS.slice(startIndex < 0 ? 0 : startIndex + 1);
     if (visibleLevels.length === 0) {
         return { nodes: [], edges: [{ id: `${node.id}-goal`, source: node.id, target: 'goal' }] };
     }
+
     const previewNodes = visibleLevels.map((level, index) => ({
         id: `${level}-preview-${node.id}`,
-        type: 'sample',
-        data: { label: previewLabels[level], type: level.toUpperCase(), preview: true, parentId: node.id },
+        type: getHiringNodeType(level),
+        data: {
+            label: getLevelLegend(level).title,
+            type: getLevelLegend(level).title.toUpperCase(),
+            level,
+            companyType: node.data.companyType ?? 'shared',
+            preview: true,
+            parentId: node.id,
+        },
         previewIndex: index,
     }));
     const previewEdges = previewNodes.map((previewNode, index) => ({
@@ -216,11 +180,11 @@ const getSpawnPosition = (node, prevById, nextById) => {
 // CANVAS
 // ============================================================
 
-export function SampleHiringMapCanvas() {
+export function HiringMapCanvas() {
     const autoFocus = true;
-    const [expandedNodes, setExpandedNodes] = useState(new Set());
-    const [nodes, setNodes] = useState(() => layoutGraph(...Object.values(buildGraph(new Set()))));
-    const [edges, setEdges] = useState(() => buildGraph(new Set()).edges);
+    const [expandedNodes, setExpandedNodes] = useState(INITIAL_EXPANDED_NODES);
+    const [nodes, setNodes] = useState(() => layoutGraph(...Object.values(buildGraph(INITIAL_EXPANDED_NODES))));
+    const [edges, setEdges] = useState(() => buildGraph(INITIAL_EXPANDED_NODES).edges);
     const rfInstance = useRef(null);
     const cleanupTimer = useRef(null);
 
@@ -228,7 +192,7 @@ export function SampleHiringMapCanvas() {
 
     const onNodeClick = useCallback(
         (event, clickedNode) => {
-            if (!clickedNode.data.level || clickedNode.data.level === 'channel') return;
+            if (!clickedNode.data.level || clickedNode.data.level === 'hiringProcess') return;
 
             const nextExpanded = new Set(expandedNodes);
             nextExpanded.has(clickedNode.id) ? nextExpanded.delete(clickedNode.id) : nextExpanded.add(clickedNode.id);
@@ -330,7 +294,7 @@ export function SampleHiringMapCanvas() {
             if (cleanupTimer.current) clearTimeout(cleanupTimer.current);
             cleanupTimer.current = setTimeout(() => {
                 setNodes((current) => current.filter((n) => !n.data.exiting));
-            }, TRANSITION_MS + 100);
+            }, MAP_ANIMATION.durationMs + 100);
 
             requestAnimationFrame(() => {
                 if (!autoFocus) return;
@@ -362,14 +326,14 @@ export function SampleHiringMapCanvas() {
           animate instead of snapping. */}
             <style>{`
         .react-flow__node {
-          transition: transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1);
+          transition: ${getMapTransition('transform')};
         }
       `}</style>
 
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
-                nodeTypes={nodeTypes}
+                nodeTypes={hiringNodeTypes}
                 onNodeClick={onNodeClick}
                 onConnect={onConnect}
                 onInit={(instance) => {
@@ -384,9 +348,12 @@ export function SampleHiringMapCanvas() {
                 <MiniMap pannable zoomable />
             </ReactFlow>
 
-            <div className="absolute right-4 top-4">
+            <div className="absolute right-4 top-4 flex items-start gap-2">
                 <ThemeToggle />
+                <MapLegend />
             </div>
         </div>
     );
 }
+
+export const SampleHiringMapCanvas = HiringMapCanvas;

@@ -1,0 +1,1 @@
+export { hiringMap } from './hiringMap';
