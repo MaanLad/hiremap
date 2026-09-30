@@ -1,44 +1,36 @@
 import dagre from '@dagrejs/dagre';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlow,
-  addEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { MapLegend } from '../panels/index';
-import { hiringMap } from '../../data/index';
+import { RotateCcw } from 'lucide-react';
+import { MAP_ANIMATION, MAP_VISUAL_OPACITY, getMapAnimation, getMapTransition, getMotionTransition, getReducedMotionCss } from '../../config/animation';
+import { MapBreadcrumbPanel, MapBreadcrumbToggle, MapDetailsPanel, MapDetailsPanelToggle, MapLegend, SituationButton } from '../panels/index';
+import {
+  createGraphIndex,
+  hiringMap,
+  LEVEL_LABELS,
+  LEVEL_TYPES,
+  MAP_LEVELS,
+} from '../../data/index';
 import { getHiringNodeType, hiringNodeTypes } from '../nodes/hiringNodeTypes';
 import { ThemeToggle } from '../../provider/index';
+import { INITIAL_EXPANDED_IDS, selectRoute, useHiringMapStore } from '../../store/hiringMapStore';
 
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 76;
-const TRANSITION_MS = 420; // keep in sync with the CSS below
-const INITIAL_EXPANDED_NODES = new Set(['start', 'government']);
-
 const rootNodes = [
   { id: 'start', type: 'startNode', data: { label: 'Start', type: 'START', level: 'start', companyType: 'shared' } },
   { id: 'goal', type: 'endpointNode', data: { label: 'Hired', type: 'HIRED', companyType: 'shared' } },
 ];
 
-const mapNodesById = new Map(hiringMap.nodes.map((node) => [node.id, node]));
-const mapChildrenById = hiringMap.edges.reduce((children, edge) => {
-  const current = children.get(edge.source) ?? [];
-  children.set(edge.source, [...current, edge.target]);
-  return children;
-}, new Map());
-
-const LEVEL_TYPES = {
-  companyType: 'COMPANY TYPE',
-  hiringGoal: 'HIRING GOAL',
-  requirements: 'REQUIREMENTS',
-  preparation: 'PREPARATION',
-  hiringChannel: 'HIRING CHANNEL',
-  hiringProcess: 'HIRING PROCESS',
-};
+const { nodesById: mapNodesById, childrenById: mapChildrenById } = createGraphIndex(hiringMap);
 
 const getMapNode = (id, parentId) => ({
   id,
@@ -63,16 +55,6 @@ const getChildren = (node) => {
 
   return (mapChildrenById.get(node.id) ?? [])
     .map((childId) => getMapNode(childId, node.id));
-};
-
-const MAP_LEVELS = ['companyType', 'hiringGoal', 'requirements', 'preparation', 'hiringChannel', 'hiringProcess'];
-const LEVEL_LABELS = {
-  companyType: 'Company Type',
-  hiringGoal: 'Hiring Goal',
-  requirements: 'Requirements',
-  preparation: 'Preparation / Eligibility',
-  hiringChannel: 'Hiring Channel',
-  hiringProcess: 'Hiring Process',
 };
 
 const getPreviewPath = (node) => {
@@ -155,6 +137,11 @@ const layoutGraph = (nodes, edges) => {
   });
 };
 
+const withExpansionState = (nodes, expandedNodeIds) => nodes.map((node) => ({
+  ...node,
+  data: { ...node.data, expanded: expandedNodeIds.has(node.id) },
+}));
+
 // Climbs the parentId chain to find where a node should shrink *toward*
 // when it exits — checks the upcoming layout first (nextById), then falls
 // back to walking further up through the outgoing layout (prevById).
@@ -199,163 +186,216 @@ const getSpawnPosition = (node, prevById, nextById) => {
 
 export function HiringMapCanvas() {
   const autoFocus = true;
-  const [expandedNodes, setExpandedNodes] = useState(INITIAL_EXPANDED_NODES);
-  const [nodes, setNodes] = useState(() => layoutGraph(...Object.values(buildGraph(INITIAL_EXPANDED_NODES))));
-  const [edges, setEdges] = useState(() => buildGraph(INITIAL_EXPANDED_NODES).edges);
+  const expandedNodes = useHiringMapStore((state) => state.expandedIds);
+  const selectedNodeId = useHiringMapStore((state) => state.selectedId);
+  const panelOpen = useHiringMapStore((state) => state.panelOpen);
+  const hasExplored = useHiringMapStore((state) => state.hasExplored);
+  const reduceMotion = useReducedMotion();
+  const resetStore = useHiringMapStore((state) => state.reset);
+  const [nodes, setNodes] = useState(() => withExpansionState(
+    layoutGraph(...Object.values(buildGraph(INITIAL_EXPANDED_IDS))),
+    INITIAL_EXPANDED_IDS,
+  ));
+  const [edges, setEdges] = useState(() => buildGraph(INITIAL_EXPANDED_IDS).edges);
   const rfInstance = useRef(null);
   const cleanupTimer = useRef(null);
-
-  const onConnect = useCallback((params) => setEdges((current) => addEdge(params, current)), []);
+  const focusTimer = useRef(null);
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
+  const routeIds = new Set(selectRoute(nodes, selectedNodeId).map((node) => node.id));
+  const connectedIds = new Set([
+    ...routeIds,
+    ...nodes.filter((node) => node.data.parentId === selectedNodeId).map((node) => node.id),
+  ]);
+  const hasSelectedRoute = Boolean(selectedNodeId && routeIds.size > 0);
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const getHorizontalNeighbor = (nodeId, direction) => {
+    const candidates = edges
+      .filter((edge) => (direction === 'right' ? edge.source === nodeId : edge.target === nodeId))
+      .map((edge) => direction === 'right' ? edge.target : edge.source)
+      .map((id) => nodesById.get(id))
+      .filter(Boolean)
+      .sort((first, second) => first.position.y - second.position.y);
+    return candidates[0]?.id;
+  };
+  const getVerticalNeighbor = (node) => {
+    const siblings = nodes
+      .filter((candidate) => candidate.data.parentId === node.data.parentId)
+      .sort((first, second) => first.position.y - second.position.y);
+    const siblingIndex = siblings.findIndex((sibling) => sibling.id === node.id);
+    return {
+      up: siblings[siblingIndex - 1]?.id,
+      down: siblings[siblingIndex + 1]?.id,
+    };
+  };
+  const displayNodes = nodes.map((node) => ({
+    ...node,
+    selected: node.id === selectedNodeId,
+    data: {
+      ...node.data,
+      keyboardNeighbors: {
+        ArrowLeft: getHorizontalNeighbor(node.id, 'left'),
+        ArrowRight: getHorizontalNeighbor(node.id, 'right'),
+        ArrowUp: getVerticalNeighbor(node).up,
+        ArrowDown: getVerticalNeighbor(node).down,
+      },
+      opacityLevel: !hasSelectedRoute || node.id === selectedNodeId
+        ? 'selected'
+        : connectedIds.has(node.id) ? 'connected' : 'untouched',
+    },
+  }));
+  const displayEdges = edges.map((edge) => {
+    const highlighted = hasSelectedRoute && connectedIds.has(edge.source) && connectedIds.has(edge.target);
+    return {
+      ...edge,
+      className: highlighted ? 'map-edge-highlighted' : hasSelectedRoute ? 'map-edge-dimmed' : undefined,
+      style: hasSelectedRoute
+        ? {
+          opacity: highlighted ? MAP_VISUAL_OPACITY.connectedEdge : MAP_VISUAL_OPACITY.untouchedEdge,
+          stroke: highlighted ? 'var(--accent)' : undefined,
+          strokeWidth: highlighted ? 2 : undefined,
+        }
+        : undefined,
+    };
+  });
 
   const onNodeClick = useCallback(
     (event, clickedNode) => {
-      if (!clickedNode.data.level || clickedNode.data.level === 'hiringProcess') return;
-
-      const nextExpanded = new Set(expandedNodes);
-      nextExpanded.has(clickedNode.id) ? nextExpanded.delete(clickedNode.id) : nextExpanded.add(clickedNode.id);
-
-      const nextGraph = buildGraph(nextExpanded);
-      const nextLaidOut = layoutGraph(nextGraph.nodes, nextGraph.edges);
-      const nextById = new Map(nextLaidOut.map((n) => [n.id, n]));
-
-      setExpandedNodes(nextExpanded);
-      setEdges(nextGraph.edges);
-
-      // setNodes((prevNodes) => {
-      //     const prevById = new Map(prevNodes.map((n) => [n.id, n]));
-      //     const parentNode = nextById.get(clickedNode.id) ?? prevById.get(clickedNode.id);
-
-      //     const exiting = prevNodes
-      //         .filter((n) => !nextById.has(n.id))
-      //         .map((n) => ({
-      //             ...n,
-      //             position: getExitTarget(n, prevById, nextById),
-      //             data: { ...n.data, exiting: true },
-      //             zIndex: -1, // sit behind everything else while fading out
-      //         }));
-
-      //     const staying = nextLaidOut.map((n) => {
-      //         if (prevById.has(n.id)) return n; // already on screen — just reposition, no spawn needed
-      //         // brand new node — park it under the parent for one frame
-      //         return {
-      //             ...n,
-      //             position: parentNode ? getSpawnPosition(parentNode) : n.position,
-      //             data: { ...n.data, spawning: true },
-      //             zIndex: 1,
-      //         };
-      //     });
-
-      //     // new nodes render AFTER exiting ones so they layer on top, not under
-      //     return [...exiting, ...staying];
-      // });
-
-      // one frame later: move newly-spawned nodes to their real dagre position —
-      // this is the transform change the CSS transition actually animates
-
-      // setNodes((prevNodes) => {
-      //     const prevById = new Map(prevNodes.map((n) => [n.id, n]));
-
-      //     // nodes leaving: keep them mounted a bit longer, redirect their
-      //     // position toward the nearest surviving ancestor, flag exiting
-      //     // so SampleNode animates itself out
-      //     const exiting = prevNodes
-      //         .filter((n) => !nextById.has(n.id))
-      //         .map((n) => ({
-      //             ...n,
-      //             position: getExitTarget(n, prevById, nextById),
-      //             data: { ...n.data, exiting: true },
-      //         }));
-
-      //     // nodes staying/new: same ids reconcile in place (React won't
-      //     // remount them, so only their position/transform animates via CSS);
-      //     // brand-new ids mount fresh and trigger SampleNode's entrance effect
-      //     return [...nextLaidOut, ...exiting];
-      // });
-      setNodes((prevNodes) => {
-        // finalize any exit transition left over from an interrupted previous
-        // click BEFORE computing this one — otherwise those ids stay "alive"
-        // in state forever and re-expanding them reuses the stale instance
-        // instead of mounting fresh (which is why entrance stops working).
-        const settled = prevNodes.filter((n) => !n.data.exiting);
-        const prevById = new Map(settled.map((n) => [n.id, n]));
-
-        const exiting = settled
-          .filter((n) => !nextById.has(n.id))
-          .map((n) => ({
-            ...n,
-            position: getExitTarget(n, prevById, nextById),
-            data: { ...n.data, exiting: true },
-          }));
-
-        const entering = nextLaidOut.map((nextNode) => {
-          if (prevById.has(nextNode.id)) return nextNode;
-          return {
-            ...nextNode,
-            position: getSpawnPosition(nextNode, prevById, nextById),
-            data: { ...nextNode.data, spawning: true },
-          };
-        });
-
-        return [...entering, ...exiting];
-      });
-
-      requestAnimationFrame(() => {
-        setNodes((current) => current.map((currentNode) => {
-          const final = nextById.get(currentNode.id);
-          return final && currentNode.data.spawning
-            ? { ...final, data: { ...final.data, spawning: false } }
-            : currentNode;
-        }));
-      });
-
-      if (cleanupTimer.current) clearTimeout(cleanupTimer.current);
-      cleanupTimer.current = setTimeout(() => {
-        setNodes((current) => current.filter((n) => !n.data.exiting));
-      }, TRANSITION_MS + 100);
-
-      requestAnimationFrame(() => {
-        if (!autoFocus) return;
-
-        const isExpanding = nextExpanded.has(clickedNode.id);
-        const focusIds = isExpanding
-          ? [clickedNode.id, ...nextGraph.nodes.filter((n) => n.data.parentId === clickedNode.id).map((n) => n.id)]
-          : [clickedNode.id];
-
-        const delay = isExpanding ? 24 : 0;
-        setTimeout(() => {
-          rfInstance.current?.fitView({
-            nodes: focusIds.map((id) => ({ id })),
-            duration: 300,
-            padding: 0.3,
-          });
-        }, delay);
-      });
+      if (event.target.closest?.('[data-node-chevron]')) return;
+      useHiringMapStore.getState().select(clickedNode.id);
+      setNodes((current) => current.map((node) => ({ ...node, selected: node.id === clickedNode.id })));
     },
-    [autoFocus, expandedNodes],
+    [],
   );
 
-  useEffect(() => () => clearTimeout(cleanupTimer.current), []);
+  const onNodeDoubleClick = useCallback((event, clickedNode) => {
+    if (event.target.closest?.('[data-node-chevron], [data-node-details]')) return;
+    const { openPanel, select } = useHiringMapStore.getState();
+    select(clickedNode.id);
+    openPanel();
+    setNodes((current) => current.map((node) => ({ ...node, selected: node.id === clickedNode.id })));
+  }, []);
+
+  useEffect(() => {
+    const nextGraph = buildGraph(expandedNodes);
+    const nextLaidOut = withExpansionState(layoutGraph(nextGraph.nodes, nextGraph.edges), expandedNodes);
+    const nextById = new Map(nextLaidOut.map((node) => [node.id, node]));
+
+    setEdges(nextGraph.edges);
+    setNodes((prevNodes) => {
+      const settled = prevNodes.filter((node) => !node.data.exiting);
+      const prevById = new Map(settled.map((node) => [node.id, node]));
+      const exiting = settled
+        .filter((node) => !nextById.has(node.id))
+        .map((node) => ({
+          ...node,
+          position: getExitTarget(node, prevById, nextById),
+          data: { ...node.data, exiting: true },
+        }));
+      const entering = nextLaidOut.map((nextNode) => {
+        if (prevById.has(nextNode.id)) {
+          return { ...nextNode, selected: nextNode.id === selectedNodeIdRef.current };
+        }
+        return {
+          ...nextNode,
+          position: getSpawnPosition(nextNode, prevById, nextById),
+          selected: nextNode.id === selectedNodeIdRef.current,
+          data: { ...nextNode.data, spawning: true },
+        };
+      });
+      return [...entering, ...exiting];
+    });
+
+    requestAnimationFrame(() => {
+      setNodes((current) => current.map((currentNode) => {
+        const final = nextById.get(currentNode.id);
+        return final && currentNode.data.spawning
+          ? { ...final, selected: final.id === selectedNodeIdRef.current, data: { ...final.data, spawning: false } }
+          : currentNode;
+      }));
+    });
+
+    if (cleanupTimer.current) clearTimeout(cleanupTimer.current);
+    cleanupTimer.current = setTimeout(() => {
+      setNodes((current) => current.filter((node) => !node.data.exiting));
+    }, MAP_ANIMATION.durationMs + 100);
+
+    requestAnimationFrame(() => {
+      const focusedId = selectedNodeIdRef.current;
+      if (!autoFocus || !focusedId) return;
+
+      const isExpanding = expandedNodes.has(focusedId);
+      const focusIds = isExpanding
+        ? [focusedId, ...nextGraph.nodes
+          .filter((node) => node.data.parentId === focusedId)
+          .map((node) => node.id)]
+        : [focusedId];
+
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+      focusTimer.current = setTimeout(() => {
+        rfInstance.current?.fitView({
+          nodes: focusIds.map((id) => ({ id })),
+          duration: getMapAnimation('focus').durationMs,
+          padding: 0.3,
+        });
+      }, isExpanding ? 24 : 0);
+    });
+  }, [autoFocus, expandedNodes]);
+
+  const resetMap = useCallback(() => {
+    resetStore();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        rfInstance.current?.fitView({ duration: 300, padding: 0.3 });
+      });
+    });
+  }, [resetStore]);
+
+  useEffect(() => {
+    if (!panelOpen || !selectedNodeId) return undefined;
+
+    const focusTimer = setTimeout(() => {
+      rfInstance.current?.fitView({
+        nodes: [{ id: selectedNodeId }],
+        duration: 300,
+        padding: 0.3,
+      });
+    }, 24);
+
+    return () => clearTimeout(focusTimer);
+  }, [panelOpen, selectedNodeId]);
+
+  useEffect(() => () => {
+    clearTimeout(cleanupTimer.current);
+    clearTimeout(focusTimer.current);
+  }, []);
 
   return (
-    <div className="relative h-full w-full bg-surface-0">
+    <div className="relative h-full w-full overflow-hidden bg-surface-0">
       {/* Position changes on .react-flow__node are just an inline
           transform — this one rule is what makes dagre's re-layout
           animate instead of snapping. */}
       <style>{`
         .react-flow__node {
-          transition: transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1);
+          transition: ${getMapTransition('transform')};
         }
+        .react-flow__edge {
+          transition: opacity ${getMapAnimation('focus').durationMs}ms ${getMapAnimation('focus').easing};
+        }
+        ${getReducedMotionCss('.react-flow__node, .react-flow__edge, .map-node, .map-node-content')}
       `}</style>
 
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={displayNodes}
+        edges={displayEdges}
         nodeTypes={hiringNodeTypes}
         onNodeClick={onNodeClick}
-        onConnect={onConnect}
+        onNodeDoubleClick={onNodeDoubleClick}
         onInit={(instance) => {
           rfInstance.current = instance;
         }}
+        nodesDraggable={false}
+        nodesConnectable={false}
         defaultEdgeOptions={{ type: 'bezier' }}
         fitView
         proOptions={{ hideAttribution: false }}
@@ -365,10 +405,49 @@ export function HiringMapCanvas() {
         <MiniMap pannable zoomable />
       </ReactFlow>
 
-      <div className="absolute right-4 top-4 flex items-start gap-2">
+      <div
+        className="absolute right-4 top-4 z-20 flex items-start gap-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={resetMap}
+          aria-label="Reset hiring map"
+          title="Reset hiring map"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-node border border-border bg-surface-1 text-ink-muted transition-colors hover:border-route-border hover:text-route"
+        >
+          <RotateCcw size={16} />
+        </button>
+        <MapDetailsPanelToggle />
+        <SituationButton />
         <ThemeToggle />
         <MapLegend />
       </div>
+
+      <div
+        className="absolute left-4 top-4 z-20 flex items-start gap-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <MapBreadcrumbToggle />
+      </div>
+
+      <AnimatePresence>
+        {!hasExplored && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={reduceMotion ? { duration: 0 } : getMotionTransition('focus')}
+            className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-node border border-route-border bg-surface-1 px-4 py-2 text-xs text-ink-muted shadow-panel"
+          >
+            Click a node's chevron to explore
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <MapBreadcrumbPanel />
+      <MapDetailsPanel nodes={nodes} />
     </div>
   );
 }
+

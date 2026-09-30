@@ -6,14 +6,12 @@ import {
     Controls,
     MiniMap,
     ReactFlow,
-    addEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { MAP_ANIMATION, getMapTransition } from '../../config/animation';
+import { MAP_ANIMATION, getMapTransition, getReducedMotionCss } from '../../config/animation';
 import { MapLegend } from '../panels/index';
-import { hiringMap } from '../../data/index';
+import { hiringMap, LEVEL_LABELS, LEVEL_TYPES, MAP_LEVELS } from '../../data/index';
 import { getHiringNodeType, hiringNodeTypes } from '../nodes/hiringNodeTypes';
-import { getLevelLegend } from '../nodes/nodeVisuals';
 import { ThemeToggle } from '../../provider/index';
 
 const NODE_WIDTH = 180;
@@ -37,7 +35,7 @@ const getMapNode = (id, parentId) => ({
     type: getHiringNodeType(mapNodesById.get(id).level),
     data: {
         ...mapNodesById.get(id),
-        type: getLevelLegend(mapNodesById.get(id).level).title.toUpperCase(),
+        type: LEVEL_TYPES[mapNodesById.get(id).level],
         parentId,
     },
 });
@@ -57,7 +55,6 @@ const getChildren = (node) => {
         .map((childId) => getMapNode(childId, node.id));
 };
 
-const MAP_LEVELS = ['companyType', 'hiringGoal', 'requirements', 'preparation', 'hiringChannel', 'hiringProcess'];
 const getPreviewPath = (node) => {
     const startIndex = MAP_LEVELS.indexOf(node.data.level);
     const visibleLevels = MAP_LEVELS.slice(startIndex < 0 ? 0 : startIndex + 1);
@@ -69,8 +66,8 @@ const getPreviewPath = (node) => {
         id: `${level}-preview-${node.id}`,
         type: getHiringNodeType(level),
         data: {
-            label: getLevelLegend(level).title,
-            type: getLevelLegend(level).title.toUpperCase(),
+            label: LEVEL_LABELS[level],
+            type: LEVEL_TYPES[level],
             level,
             companyType: node.data.companyType ?? 'shared',
             preview: true,
@@ -188,8 +185,6 @@ export function HiringMapCanvas() {
     const rfInstance = useRef(null);
     const cleanupTimer = useRef(null);
 
-    const onConnect = useCallback((params) => setEdges((current) => addEdge(params, current)), []);
-
     const onNodeClick = useCallback(
         (event, clickedNode) => {
             if (!clickedNode.data.level || clickedNode.data.level === 'hiringProcess') return;
@@ -204,56 +199,6 @@ export function HiringMapCanvas() {
             setExpandedNodes(nextExpanded);
             setEdges(nextGraph.edges);
 
-            // setNodes((prevNodes) => {
-            //     const prevById = new Map(prevNodes.map((n) => [n.id, n]));
-            //     const parentNode = nextById.get(clickedNode.id) ?? prevById.get(clickedNode.id);
-
-            //     const exiting = prevNodes
-            //         .filter((n) => !nextById.has(n.id))
-            //         .map((n) => ({
-            //             ...n,
-            //             position: getExitTarget(n, prevById, nextById),
-            //             data: { ...n.data, exiting: true },
-            //             zIndex: -1, // sit behind everything else while fading out
-            //         }));
-
-            //     const staying = nextLaidOut.map((n) => {
-            //         if (prevById.has(n.id)) return n; // already on screen — just reposition, no spawn needed
-            //         // brand new node — park it under the parent for one frame
-            //         return {
-            //             ...n,
-            //             position: parentNode ? getSpawnPosition(parentNode) : n.position,
-            //             data: { ...n.data, spawning: true },
-            //             zIndex: 1,
-            //         };
-            //     });
-
-            //     // new nodes render AFTER exiting ones so they layer on top, not under
-            //     return [...exiting, ...staying];
-            // });
-
-            // one frame later: move newly-spawned nodes to their real dagre position —
-            // this is the transform change the CSS transition actually animates
-
-            // setNodes((prevNodes) => {
-            //     const prevById = new Map(prevNodes.map((n) => [n.id, n]));
-
-            //     // nodes leaving: keep them mounted a bit longer, redirect their
-            //     // position toward the nearest surviving ancestor, flag exiting
-            //     // so SampleNode animates itself out
-            //     const exiting = prevNodes
-            //         .filter((n) => !nextById.has(n.id))
-            //         .map((n) => ({
-            //             ...n,
-            //             position: getExitTarget(n, prevById, nextById),
-            //             data: { ...n.data, exiting: true },
-            //         }));
-
-            //     // nodes staying/new: same ids reconcile in place (React won't
-            //     // remount them, so only their position/transform animates via CSS);
-            //     // brand-new ids mount fresh and trigger SampleNode's entrance effect
-            //     return [...nextLaidOut, ...exiting];
-            // });
             setNodes((prevNodes) => {
                 // finalize any exit transition left over from an interrupted previous
                 // click BEFORE computing this one — otherwise those ids stay "alive"
@@ -328,6 +273,7 @@ export function HiringMapCanvas() {
         .react-flow__node {
           transition: ${getMapTransition('transform')};
         }
+                ${getReducedMotionCss('.react-flow__node, .map-node, .map-node-content')}
       `}</style>
 
             <ReactFlow
@@ -335,10 +281,11 @@ export function HiringMapCanvas() {
                 edges={edges}
                 nodeTypes={hiringNodeTypes}
                 onNodeClick={onNodeClick}
-                onConnect={onConnect}
                 onInit={(instance) => {
                     rfInstance.current = instance;
                 }}
+                nodesDraggable={false}
+                nodesConnectable={false}
                 defaultEdgeOptions={{ type: 'bezier' }}
                 fitView
                 proOptions={{ hideAttribution: false }}
