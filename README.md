@@ -201,7 +201,7 @@ HireMap values contributions beyond code. People can contribute through **hiring
 
 Meaningful contributors may be recognized through project credits, contributor profiles, GitHub acknowledgements, and opportunities to take ownership of parts of the project.
 
-See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for the contributor levels, recognition system, and maintainer roles.
+See [CONTRIBUTORS.MD](./CONTRIBUTORS.MD) for the contributor levels, recognition system, and maintainer roles.
 
 
 ## Data quality and scope
