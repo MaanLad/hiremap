@@ -18,6 +18,8 @@ import {
   LEVEL_LABELS,
   LEVEL_TYPES,
   MAP_LEVELS,
+  COMPANY_TYPE,
+  NODE_LEVEL,
 } from '../../data/index';
 import { getHiringNodeType, hiringNodeTypes } from '../nodes/hiringNodeTypes';
 import { ThemeToggle } from '../../provider/index';
@@ -26,12 +28,14 @@ import { INITIAL_EXPANDED_IDS, selectRoute, useHiringMapStore } from '../../stor
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 76;
 const rootNodes = [
-  { id: 'start', type: 'startNode', data: { label: 'Start', type: 'START', level: 'start', companyType: 'shared' } },
-  { id: 'goal', type: 'endpointNode', data: { label: 'Hired', type: 'HIRED', companyType: 'shared' } },
+  { id: 'start', type: 'startNode', data: { label: 'Start', type: 'START', level: 'start', companyType: COMPANY_TYPE.SHARED } },
+  { id: 'goal', type: 'endpointNode', data: { label: 'Hired', type: 'HIRED', companyType: COMPANY_TYPE.SHARED } },
 ];
 
 const { nodesById: mapNodesById, childrenById: mapChildrenById } = createGraphIndex(hiringMap);
 
+
+//Get the node for the given id and parentId
 const getMapNode = (id, parentId) => ({
   id,
   type: getHiringNodeType(mapNodesById.get(id).level),
@@ -49,7 +53,7 @@ const getMapNode = (id, parentId) => ({
 const getChildren = (node) => {
   if (node.id === 'start') {
     return hiringMap.nodes
-      .filter((mapNode) => mapNode.level === 'companyType')
+      .filter((mapNode) => mapNode.level === NODE_LEVEL.COMPANY_TYPE)
       .map((mapNode) => getMapNode(mapNode.id, node.id));
   }
 
@@ -71,7 +75,7 @@ const getPreviewPath = (node) => {
       label: LEVEL_LABELS[level],
       type: LEVEL_TYPES[level],
       level,
-      companyType: node.data.companyType ?? 'shared',
+      companyType: node.data.companyType ?? COMPANY_TYPE.SHARED,
       preview: true,
       parentId: node.id,
     },
@@ -450,4 +454,3 @@ export function HiringMapCanvas() {
     </div>
   );
 }
-

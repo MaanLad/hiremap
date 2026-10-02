@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { GitBranch, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Handle, Position } from '@xyflow/react';
+import { NODE_LEVEL } from '../../data/index';
 import { getMotionTransition, MAP_VISUAL_OPACITY } from '../../config/animation';
 import { useHiringMapStore } from '../../store/hiringMapStore';
 import { getNodeVisuals } from './nodeVisuals';
@@ -11,7 +12,7 @@ export function HiringLevelNode({ data, id, selected }) {
   const reduceMotion = useReducedMotion();
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const tooltipTimer = useRef(null);
-  const expandable = Boolean(data.level) && data.level !== 'hiringProcess';
+  const expandable = Boolean(data.level) && data.level !== NODE_LEVEL.HIRING_PROCESS;
   const handleClass = '!h-2 !w-2 !border-none !bg-route';
   const summary = data.subtitle ?? data.details?.description ?? 'Explore this stage of the hiring map.';
   const nodeOpacity = MAP_VISUAL_OPACITY[data.opacityLevel ?? 'selected'];

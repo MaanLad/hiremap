@@ -1,4 +1,6 @@
-export const governmentEdges = [
+import type { HiringEdge } from '../types';
+
+export const governmentEdges: HiringEdge[] = [
   { id: 'government-to-goal', source: 'government', target: 'technical-recruitment' },
   { id: 'government-to-software-goal', source: 'government', target: 'government-software-engineering' },
   { id: 'government-to-data-goal', source: 'government', target: 'government-data-analytics' },

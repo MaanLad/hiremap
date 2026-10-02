@@ -1,10 +1,14 @@
-export const processes = [
+import { COMPANY_TYPE, NODE_LEVEL } from '../schema';
+
+import type { HiringNode } from '../types';
+
+export const processes: HiringNode[] = [
   {
     id: 'technical-process',
     label: 'Screening / Assessment / Interviews',
     subtitle: 'Technical hiring process',
-    level: 'hiringProcess',
-    companyType: 'product',
+    level: NODE_LEVEL.HIRING_PROCESS,
+    companyType: COMPANY_TYPE.PRODUCT,
     details: {
       description: 'The major selection stages after entering a private-sector hiring pipeline.',
     },
@@ -13,8 +17,8 @@ export const processes = [
     id: 'exam-selection',
     label: 'Exam / Assessment / Selection',
     subtitle: 'Formal selection process',
-    level: 'hiringProcess',
-    companyType: 'government',
+    level: NODE_LEVEL.HIRING_PROCESS,
+    companyType: COMPANY_TYPE.GOVERNMENT,
     details: {
       description: 'The major examination, assessment, interview, and selection stages.',
     },
@@ -23,21 +27,21 @@ export const processes = [
     id: 'government-software-process',
     label: 'Technical Test / Interview',
     subtitle: 'Role-specific assessment and selection',
-    level: 'hiringProcess',
-    companyType: 'government',
+    level: NODE_LEVEL.HIRING_PROCESS,
+    companyType: COMPANY_TYPE.GOVERNMENT,
   },
   {
     id: 'government-data-process',
     label: 'Aptitude / Data Assessment',
     subtitle: 'Assessment, interview, and selection',
-    level: 'hiringProcess',
-    companyType: 'government',
+    level: NODE_LEVEL.HIRING_PROCESS,
+    companyType: COMPANY_TYPE.GOVERNMENT,
   },
   {
     id: 'government-security-process',
     label: 'Security Assessment / Interview',
     subtitle: 'Technical and formal selection stages',
-    level: 'hiringProcess',
-    companyType: 'government',
+    level: NODE_LEVEL.HIRING_PROCESS,
+    companyType: COMPANY_TYPE.GOVERNMENT,
   },
 ];

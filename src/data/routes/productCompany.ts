@@ -1,4 +1,6 @@
-export const productCompanyEdges = [
+import type { HiringEdge } from '../types';
+
+export const productCompanyEdges: HiringEdge[] = [
   { id: 'product-to-goal', source: 'product-company', target: 'software-engineering' },
   { id: 'startup-to-goal', source: 'startup', target: 'software-engineering' },
   { id: 'goal-to-requirements', source: 'software-engineering', target: 'technical-requirements' },

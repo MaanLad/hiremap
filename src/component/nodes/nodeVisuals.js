@@ -1,28 +1,30 @@
+import { COMPANY_TYPE, NODE_LEVEL } from '../../data/schema';
+
 const companyBackgrounds = {
-  product: 'rgba(37, 99, 235, 0.10)',
-  startup: 'rgba(234, 88, 12, 0.11)',
-  government: 'rgba(5, 150, 105, 0.11)',
-  shared: 'rgba(107, 114, 128, 0.10)',
+  [COMPANY_TYPE.PRODUCT]: 'rgba(37, 99, 235, 0.10)',
+  [COMPANY_TYPE.STARTUP]: 'rgba(234, 88, 12, 0.11)',
+  [COMPANY_TYPE.GOVERNMENT]: 'rgba(5, 150, 105, 0.11)',
+  [COMPANY_TYPE.SHARED]: 'rgba(107, 114, 128, 0.10)',
 };
 
 export const LEVEL_LEGEND = [
-  { level: 'companyType', title: 'Company Type', color: '#2563EB' },
-  { level: 'hiringGoal', title: 'Hiring Goal', color: '#7C3AED' },
-  { level: 'requirements', title: 'Requirements', color: '#0891B2' },
-  { level: 'preparation', title: 'Preparation / Eligibility', color: '#D97706' },
-  { level: 'hiringChannel', title: 'Hiring Channel', color: '#DB2777' },
-  { level: 'hiringProcess', title: 'Hiring Process', color: '#059669' },
-  { level: 'endpoint', title: 'Hired / Endpoint', color: '#4B5563' },
+  { level: NODE_LEVEL.COMPANY_TYPE, title: 'Company Type', color: '#2563EB' },
+  { level: NODE_LEVEL.HIRING_GOAL, title: 'Hiring Goal', color: '#7C3AED' },
+  { level: NODE_LEVEL.REQUIREMENTS, title: 'Requirements', color: '#0891B2' },
+  { level: NODE_LEVEL.PREPARATION, title: 'Preparation / Eligibility', color: '#D97706' },
+  { level: NODE_LEVEL.HIRING_CHANNEL, title: 'Hiring Channel', color: '#DB2777' },
+  { level: NODE_LEVEL.HIRING_PROCESS, title: 'Hiring Process', color: '#059669' },
+  { level: NODE_LEVEL.ENDPOINT, title: 'Hired / Endpoint', color: '#4B5563' },
 ];
 
 const levelBorders = Object.fromEntries(
   LEVEL_LEGEND.map(({ level, color }) => [level, color]),
 );
 
-export function getNodeVisuals({ companyType = 'shared', level = 'endpoint' }) {
+export function getNodeVisuals({ companyType = COMPANY_TYPE.SHARED, level = NODE_LEVEL.ENDPOINT }) {
   return {
-    '--node-background': companyBackgrounds[companyType] ?? companyBackgrounds.shared,
-    '--node-border': levelBorders[level] ?? levelBorders.endpoint,
+    '--node-background': companyBackgrounds[companyType] ?? companyBackgrounds[COMPANY_TYPE.SHARED],
+    '--node-border': levelBorders[level] ?? levelBorders[NODE_LEVEL.ENDPOINT],
   };
 }
 
@@ -31,8 +33,8 @@ export function getLevelLegend(level) {
 }
 
 export const companyTypeLabels = {
-  product: 'Product company',
-  startup: 'Startup',
-  government: 'Government / PSU',
-  shared: 'Shared endpoint',
+  [COMPANY_TYPE.PRODUCT]: 'Product company',
+  [COMPANY_TYPE.STARTUP]: 'Startup',
+  [COMPANY_TYPE.GOVERNMENT]: 'Government / PSU',
+  [COMPANY_TYPE.SHARED]: 'Shared endpoint',
 };

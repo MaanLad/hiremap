@@ -8,8 +8,9 @@ import { requirements } from './nodes/requirements';
 import { governmentEdges } from './routes/government';
 import { productCompanyEdges } from './routes/productCompany';
 import { COMPANY_TYPES, NODE_LEVELS, isNonEmptyString } from './schema';
+import type { HiringEdge, HiringMap, HiringNode } from './types';
 
-const nodeGroups = [
+const nodeGroups: HiringNode[][] = [
   companyTypes,
   hiringGoals,
   requirements,
@@ -19,10 +20,10 @@ const nodeGroups = [
   endpoints,
 ];
 
-const edgeGroups = [productCompanyEdges, governmentEdges];
+const edgeGroups: HiringEdge[][] = [productCompanyEdges, governmentEdges];
 
-export function validateHiringMap({ nodes, edges }) {
-  const errors = [];
+export function validateHiringMap({ nodes, edges }: HiringMap): true {
+  const errors: string[] = [];
   const nodeIds = new Set();
   const edgeIds = new Set();
 

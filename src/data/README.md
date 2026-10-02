@@ -6,9 +6,11 @@ The data layer is organized for contributors who want to add hiring experience w
 
 - `nodes/` contains reusable concepts grouped by concern: company types, hiring goals, requirements, preparation, channels, processes, and endpoints.
 - `routes/` contains relationships for an organization or hiring route.
-- `schema.js` defines supported levels and company types.
-- `registry.js` is the single aggregation and validation boundary.
-- `graphModel.js` contains shared level labels and graph indexes used by the canvas.
+- `schema.ts` defines supported levels and company types. Use `NODE_LEVEL` and
+  `COMPANY_TYPE` constants instead of manually typing their string values.
+- `types.ts` defines the shared `HiringNode`, `HiringEdge`, and `HiringMap` shapes.
+- `registry.ts` is the single aggregation and validation boundary.
+- `graphModel.ts` contains shared level labels and graph indexes used by the canvas.
 - `index.js` is the public data entry point.
 
 The registry exports the normalized shape consumed by the app:
@@ -29,14 +31,28 @@ Add a globally unique kebab-case ID to the concern module that best describes it
   id: 'community-mentorship',
   label: 'Community / Mentorship',
   subtitle: 'Build relationships and discover opportunities',
-  level: 'hiringChannel',
-  companyType: 'shared',
+  level: NODE_LEVEL.HIRING_CHANNEL,
+  companyType: COMPANY_TYPE.SHARED,
   details: {
     description: 'A community-led path into conversations and referrals.',
     examples: ['Meetups', 'Open-source communities'],
   },
 }
 ```
+
+Import the constants at the top of the node module:
+
+```js
+import { COMPANY_TYPE, NODE_LEVEL } from '../schema';
+```
+
+Run `pnpm typecheck` to check node fields and allowed values before submitting.
+
+The `@type` comment above each node array connects JavaScript data to the
+TypeScript `HiringNode` interface. It makes the editor check every item in the
+array, including required fields, field types, and allowed `level` and
+`companyType` values. The equivalent annotation for route arrays uses
+`HiringEdge`.
 
 Supported levels are `companyType`, `hiringGoal`, `requirements`, `preparation`, `hiringChannel`, `hiringProcess`, and `endpoint`.
 
