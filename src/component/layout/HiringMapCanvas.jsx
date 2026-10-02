@@ -11,7 +11,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { RotateCcw } from 'lucide-react';
 import { MAP_ANIMATION, MAP_VISUAL_OPACITY, getMapAnimation, getMapTransition, getMotionTransition, getReducedMotionCss } from '../../config/animation';
-import { MapBreadcrumbPanel, MapBreadcrumbToggle, MapDetailsPanel, MapDetailsPanelToggle, MapLegend, SituationButton } from '../panels/index';
+import { MapBreadcrumbPanel, MapBreadcrumbToggle, MapDetailsPanel, MapDetailsPanelToggle, MapLegend, SituationButton, SocialPanel } from '../panels/index';
 import {
   createGraphIndex,
   hiringMap,
@@ -204,6 +204,8 @@ export function HiringMapCanvas() {
   const rfInstance = useRef(null);
   const cleanupTimer = useRef(null);
   const focusTimer = useRef(null);
+  const exploreHintTimer = useRef(null);
+  const [showExploreHint, setShowExploreHint] = useState(true);
   const selectedNodeIdRef = useRef(selectedNodeId);
   selectedNodeIdRef.current = selectedNodeId;
   const routeIds = new Set(selectRoute(nodes, selectedNodeId).map((node) => node.id));
@@ -372,6 +374,12 @@ export function HiringMapCanvas() {
   useEffect(() => () => {
     clearTimeout(cleanupTimer.current);
     clearTimeout(focusTimer.current);
+    clearTimeout(exploreHintTimer.current);
+  }, []);
+
+  useEffect(() => {
+    exploreHintTimer.current = setTimeout(() => setShowExploreHint(false), 3800);
+    return () => clearTimeout(exploreHintTimer.current);
   }, []);
 
   return (
@@ -425,6 +433,7 @@ export function HiringMapCanvas() {
         <MapDetailsPanelToggle />
         <SituationButton />
         <ThemeToggle />
+        <SocialPanel />
         <MapLegend />
       </div>
 
@@ -436,7 +445,7 @@ export function HiringMapCanvas() {
       </div>
 
       <AnimatePresence>
-        {!hasExplored && (
+        {!hasExplored && showExploreHint && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -444,7 +453,7 @@ export function HiringMapCanvas() {
             transition={reduceMotion ? { duration: 0 } : getMotionTransition('focus')}
             className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-node border border-route-border bg-surface-1 px-4 py-2 text-xs text-ink-muted shadow-panel"
           >
-            Click a node's chevron to explore
+            Select a node, then use its branch button to explore the next stage
           </motion.div>
         )}
       </AnimatePresence>

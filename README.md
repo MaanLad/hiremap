@@ -62,6 +62,11 @@ pnpm dev
 Vite will print the local development URL. Open that URL in a browser to
 explore the map.
 
+The map includes a **Community** button in the top-right controls. It links
+to the GitHub repository and loads the current contributor, star, and fork
+counts from GitHub when opened. Use it to find the source code, open an issue,
+or share a hiring path with the project.
+
 ### Validate a change
 
 Run the checks that apply to your contribution:
@@ -189,6 +194,15 @@ to the UI.
 Small pull requests are easier to review. If you are unsure where to start,
 look for an existing issue or open one describing the information or behavior
 you would like to contribute.
+
+## Contributor recognition
+
+HireMap values contributions beyond code. People can contribute through **hiring research**, **map/data improvements**, or **application development**.
+
+Meaningful contributors may be recognized through project credits, contributor profiles, GitHub acknowledgements, and opportunities to take ownership of parts of the project.
+
+See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for the contributor levels, recognition system, and maintainer roles.
+
 
 ## Data quality and scope
 

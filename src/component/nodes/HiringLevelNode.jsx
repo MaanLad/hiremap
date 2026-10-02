@@ -12,20 +12,27 @@ export function HiringLevelNode({ data, id, selected }) {
   const reduceMotion = useReducedMotion();
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const tooltipTimer = useRef(null);
+  const tooltipHideTimer = useRef(null);
   const expandable = Boolean(data.level) && data.level !== NODE_LEVEL.HIRING_PROCESS;
   const handleClass = '!h-2 !w-2 !border-none !bg-route';
   const summary = data.subtitle ?? data.details?.description ?? 'Explore this stage of the hiring map.';
   const nodeOpacity = MAP_VISUAL_OPACITY[data.opacityLevel ?? 'selected'];
 
-  useEffect(() => () => clearTimeout(tooltipTimer.current), []);
+  useEffect(() => () => {
+    clearTimeout(tooltipTimer.current);
+    clearTimeout(tooltipHideTimer.current);
+  }, []);
 
   const showTooltip = () => {
     clearTimeout(tooltipTimer.current);
+    clearTimeout(tooltipHideTimer.current);
     tooltipTimer.current = setTimeout(() => setTooltipOpen(true), 300);
+    tooltipHideTimer.current = setTimeout(() => setTooltipOpen(false), 3800);
   };
 
   const hideTooltip = () => {
     clearTimeout(tooltipTimer.current);
+    clearTimeout(tooltipHideTimer.current);
     setTooltipOpen(false);
   };
 
