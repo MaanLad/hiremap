@@ -1,7 +1,8 @@
 # HireMap
 
-An open, visual guide to the paths people can take toward a technology or
-computer-science career.
+An open-source interactive map that helps newcomers understand paths into
+technology and computer-science careers, while giving experienced
+professionals a place to share and improve the hiring routes they know.
 
 HireMap turns hiring knowledge into an explorable map:
 
